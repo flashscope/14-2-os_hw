@@ -1,4 +1,4 @@
-// MyShellNormal.cpp : ÄÜ¼Ö ÀÀ¿ë ÇÁ·Î±×·¥¿¡ ´ëÇÑ ÁøÀÔÁ¡À» Á¤ÀÇÇÕ´Ï´Ù.
+ï»¿// MyShellNormal.cpp : ì½˜ì†” ì‘ìš© í”„ë¡œê·¸ëž¨ì— ëŒ€í•œ ì§„ìž…ì ì„ ì •ì˜í•©ë‹ˆë‹¤.
 //
 
 #include "stdafx.h"
@@ -8,27 +8,51 @@
 #define DIR_LEN MAX_PATH+1
 
 
-int CmdProcessing( void );
-TCHAR* StrLower( TCHAR* pStr );
 
 
-TCHAR ERROR_CMD[] = _T( "'%s'Àº(´Â) ½ÇÇàÇÒ ¼ö ÀÖ´Â ÇÁ·Î±×·¥ÀÌ ¾Æ´Õ´Ï´Ù. \n " );
+
+TCHAR ERROR_CMD[] = _T( "'%s'ì€(ëŠ”) ì‹¤í–‰í•  ìˆ˜ ìžˆëŠ” í”„ë¡œê·¸ëž¨ì´ ì•„ë‹™ë‹ˆë‹¤. \n " );
 TCHAR cmdString[STR_LEN];
 TCHAR cmdTokenList[CMD_TOKEN_NUM][STR_LEN];
 TCHAR seps[] = _T( " ,\t\n" );
+
+
+int CmdReadTokenize( void );
+int CmdProcessing( int tokenNum );
+TCHAR* StrLower( TCHAR* pStr );
+
+
 
 int _tmain( int argc, _TCHAR* argv[] )
 {
 
 	_tsetlocale( LC_ALL, _T( "Korean" ) );
 
-	DWORD isExit;
+	if ( argc > 2 )
+	{
+		for ( int i = 1; i < argc; ++i )
+		{
+			_tcscpy( cmdTokenList[i - 1], argv[i] );
+		}
+		CmdProcessing( argc - 1 );
+	}
+
+
+	DWORD isExit = NULL;
 	while ( true )
 	{
-		isExit = CmdProcessing();
+		int tokenNum = CmdReadTokenize();
+
+		if ( tokenNum == 0 ) // for enter input
+		{
+			continue;
+		}
+
+		isExit = CmdProcessing(tokenNum);
+
 		if ( TRUE == isExit )
 		{
-			_fputts( _T( "¸í·É¾î Ã³¸®¸¦ Á¾·áÇÕ´Ï´Ù. \n " ), stdout );
+			_fputts( _T( "ëª…ë ¹ì–´ ì²˜ë¦¬ë¥¼ ì¢…ë£Œí•©ë‹ˆë‹¤. \n " ), stdout );
 			break;
 		}
 	}
@@ -36,20 +60,41 @@ int _tmain( int argc, _TCHAR* argv[] )
 	return 0;
 }
 
-
-int CmdProcessing( void )
+int CmdReadTokenize( void )
 {
-	_fputts( _T( "Best command prompt>> " ), stdout );
+
+	TCHAR* token;
+
+	_fputts( _T( "Best command prompt >> " ), stdout );
 	_getts( cmdString );
 
-	TCHAR* token = _tcstok( cmdString, seps );
+	token = _tcstok( cmdString, seps );
 
 	int tokenNum = 0;
+
 	while ( token != NULL )
 	{
 		_tcscpy( cmdTokenList[tokenNum++], StrLower( token ) );
 		token = _tcstok( NULL, seps );
 	}
+
+	return tokenNum;
+
+}
+
+
+int CmdProcessing( int tokenNum )
+{
+	BOOL isRun;
+	STARTUPINFO si = { 0, };
+	PROCESS_INFORMATION pi;
+
+	TCHAR cmdStringWithOptions[STR_LEN] = { 0, };
+	TCHAR optString[STR_LEN] = { 0, };
+
+
+	si.cb = sizeof( si );
+
 
 	if ( !_tcscmp( cmdTokenList[0], _T( "exit" ) ) )
 	{
@@ -62,21 +107,55 @@ int CmdProcessing( void )
 		_fputts( cDir, stdout );
 		_fputts( _T( "\n" ), stdout );
 	}
-	else if ( !_tcscmp( cmdTokenList[0], _T( "Ãß°¡µÇ´Â ¸í·É¾î 2" ) ) )
+	else if ( !_tcscmp( cmdTokenList[0], _T( "start" ) ) )
 	{
+		if ( tokenNum > 1 )
+		{
+			// combine all tokens... without start
+			for ( int i = 1; i < tokenNum; ++i )
+			{
+				_stprintf( optString, _T( "%s %s" ), optString, cmdTokenList[i] );
+			}
+			_stprintf( cmdStringWithOptions, _T( "%s %s" ), _T( "MyShellNormal.exe" ), optString );
+		}
+		else // only write start
+		{
+			_stprintf( cmdStringWithOptions, _T( "%s" ), _T( "MyShellNormal.exe" ) );
+		}
 
+		isRun = CreateProcess( NULL, cmdStringWithOptions, NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi );
+
+		CloseHandle( pi.hProcess );
+		CloseHandle( pi.hThread );
+		
+	}
+	else if ( !_tcscmp( cmdTokenList[0], _T( "echo" ) ) )
+	{
+		for ( int i = 1; i < tokenNum; ++i )
+		{
+			_stprintf( optString, _T( "%s %s" ), optString, cmdTokenList[i] );
+		}
+
+		_tprintf( _T( "echo message:%s \n" ), optString );
 	}
 	else
 	{
-		STARTUPINFO si = { 0, };
-		PROCESS_INFORMATION pi;
-		si.cb = sizeof( si );
-		BOOL isRun = CreateProcess( NULL, cmdTokenList[0], NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi );
+		_tcscpy( cmdStringWithOptions, cmdTokenList[0] );
+
+		for ( int i = 1; i < tokenNum; ++i )
+		{
+			_stprintf( cmdStringWithOptions, _T( "%s %s" ), cmdStringWithOptions, cmdTokenList[i] );
+		}
+
+		isRun = CreateProcess( NULL, cmdStringWithOptions, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi );
+
+		CloseHandle( pi.hProcess );
+		CloseHandle( pi.hThread );
+
 		if ( FALSE == isRun )
 		{
 			_tprintf( ERROR_CMD, cmdTokenList[0] );
 		}
-
 	}
 
 	return 0;
