@@ -21,7 +21,8 @@ int CmdReadTokenize( void );
 int CmdProcessing( int tokenNum );
 TCHAR* StrLower( TCHAR* pStr );
 
-
+void KillProcess( void );
+void ListProcessInfo( void );
 
 int _tmain( int argc, _TCHAR* argv[] )
 {
@@ -138,6 +139,19 @@ int CmdProcessing( int tokenNum )
 
 		_tprintf( _T( "echo message:%s \n" ), optString );
 	}
+	else if ( !_tcscmp( cmdTokenList[0], _T( "lp" ) ) )
+	{
+		ListProcessInfo();
+	}
+	else if ( !_tcscmp( cmdTokenList[0], _T( "kp" ) ) )
+	{
+		if ( tokenNum < 2 )
+		{
+			_tprintf( _T( "usage: kp <process name> \n" ) );
+			return 0;
+		}
+		KillProcess();
+	}
 	else
 	{
 		_tcscpy( cmdStringWithOptions, cmdTokenList[0] );
@@ -180,3 +194,84 @@ TCHAR* StrLower( TCHAR* pStr )
 
 }
 
+void KillProcess( void )
+{
+	HANDLE hProcessSnap = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
+
+	if ( hProcessSnap == INVALID_HANDLE_VALUE )
+	{
+		_tprintf( _T( "CreateToolHelp32Snapshot (of processes) Error \n" ) );
+		return;
+	}
+
+	PROCESSENTRY32 pe32; // 프로세스 정보 얻기 위한 구조체
+	pe32.dwSize = sizeof( PROCESSENTRY32 ); // 초기화
+
+	// 첫번째 프로세스 정보 얻음
+	if ( !Process32First( hProcessSnap, &pe32 ) )
+	{
+		_tprintf( _T( "Process32 First Error \n" ) );
+		CloseHandle( hProcessSnap );
+		return;
+	}
+
+	HANDLE hProcess;
+	BOOL isKill = FALSE;
+	do 
+	{
+		// 입력된 프로세스 이름과 비교
+		if ( _tcscmp( pe32.szExeFile, cmdTokenList[1] ) == 0 )
+		{
+			// 프로세스 ID를 핸들로 변환하는 과정
+			hProcess = OpenProcess( PROCESS_ALL_ACCESS, FALSE, pe32.th32ProcessID );
+
+			if ( hProcess != NULL )
+			{
+				// 프로세스 강제 종료
+				TerminateProcess( hProcess, -1 );
+				isKill = TRUE;
+			}
+
+			CloseHandle( hProcess );
+			break;
+		}
+
+	} while ( Process32Next( hProcessSnap, &pe32 ) );
+
+	CloseHandle( hProcessSnap );
+	
+	if ( isKill == FALSE )
+	{
+		_tprintf( _T( "Kill process Fail, Try Again! \n" ) );
+	}
+
+}
+
+void ListProcessInfo( void )
+{
+	HANDLE hProcessSnap = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
+
+	if ( hProcessSnap == INVALID_HANDLE_VALUE )
+	{
+		_tprintf( _T( "CreateToolHelp32Snapshot (of processes) Error \n" ) );
+		return;
+	}
+
+	PROCESSENTRY32 pe32; // 프로세스 정보 얻기 위한 구조체
+	pe32.dwSize = sizeof( PROCESSENTRY32 ); // 초기화
+
+	// 첫번째 프로세스 정보 얻음
+	if ( !Process32First( hProcessSnap, &pe32 ) )
+	{
+		_tprintf( _T( "Process32 First Error \n" ) );
+		CloseHandle( hProcessSnap );
+		return;
+	}
+
+	do
+	{
+		_tprintf( _T( "%25s %5d \n" ), pe32.szExeFile, pe32.th32ProcessID );
+	} while ( Process32Next( hProcessSnap, &pe32 ) );
+
+	CloseHandle( hProcessSnap );
+}
