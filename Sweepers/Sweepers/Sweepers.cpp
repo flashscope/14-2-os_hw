@@ -20,21 +20,45 @@ void attack( Player* from, Player* to )
 {
 	_tprintf( _T( "BEGIN: from #%d to #%d \n" ), from->mPlayerId, to->mPlayerId );
 
-	EnterCriticalSection( &from->mLock );
-	_tprintf( _T( "--from #%d enter critical section \n" ), from->mPlayerId );
+	if ( from->mPlayerId > to->mPlayerId )
+	{
+		EnterCriticalSection( &from->mLock );
+		_tprintf( _T( "--from #%d enter critical section \n" ), from->mPlayerId );
 
-	EnterCriticalSection( &to->mLock );
-	_tprintf( _T( "--to #%d enter critical section \n" ), to->mPlayerId );
+		EnterCriticalSection( &to->mLock );
+		_tprintf( _T( "--to #%d enter critical section \n" ), to->mPlayerId );
+	}
+	else
+	{
+		EnterCriticalSection( &to->mLock );
+		_tprintf( _T( "--to #%d enter critical section \n" ), to->mPlayerId );
+
+		EnterCriticalSection( &from->mLock );
+		_tprintf( _T( "--from #%d enter critical section \n" ), from->mPlayerId );
+	}
+
 
 	to->mHP -= 100;
 	from->mHP += 70;
 
 	Sleep( 100 );
 
-	LeaveCriticalSection( &to->mLock );
-	_tprintf( _T( "--from #%d leave critical section \n" ), from->mPlayerId );
-	LeaveCriticalSection( &from->mLock );
-	_tprintf( _T( "--to #%d leave critical section \n" ), from->mPlayerId );
+	if ( from->mPlayerId > to->mPlayerId )
+	{
+		LeaveCriticalSection( &to->mLock );
+		_tprintf( _T( "--from #%d leave critical section \n" ), from->mPlayerId );
+		LeaveCriticalSection( &from->mLock );
+		_tprintf( _T( "--to #%d leave critical section \n" ), from->mPlayerId );
+	}
+	else
+	{
+		LeaveCriticalSection( &from->mLock );
+		_tprintf( _T( "--to #%d leave critical section \n" ), from->mPlayerId );
+		LeaveCriticalSection( &to->mLock );
+		_tprintf( _T( "--from #%d leave critical section \n" ), from->mPlayerId );
+
+	}
+
 }
 
 unsigned int WINAPI ThreadProc( LPVOID lpParam )
