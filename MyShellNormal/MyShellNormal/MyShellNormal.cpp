@@ -24,6 +24,9 @@ TCHAR* StrLower( TCHAR* pStr );
 void KillProcess( void );
 void ListProcessInfo( void );
 
+
+void ListDirectory( void );
+
 int _tmain( int argc, _TCHAR* argv[] )
 {
 
@@ -152,6 +155,76 @@ int CmdProcessing( int tokenNum )
 		}
 		KillProcess();
 	}
+	else if ( !_tcscmp( cmdTokenList[0], _T( "dir" ) ) )
+	{
+		ListDirectory();
+	}
+	else if ( !_tcscmp( cmdTokenList[0], _T( "mkdir" ) ) )
+	{
+		if ( tokenNum > 1 )
+		{
+			for ( int i = 1; i < tokenNum; ++i )
+			{
+				if ( i == 1 )
+				{
+					_stprintf( optString, _T( "%s%s" ), optString, cmdTokenList[i] );
+				}
+				else
+				{
+					_stprintf( optString, _T( "%s %s" ), optString, cmdTokenList[i] );
+				}
+			}
+			CreateDirectory( optString, NULL );
+		}
+	}
+	else if ( !_tcscmp( cmdTokenList[0], _T( "rmdir" ) ) )
+	{
+		if ( tokenNum > 1 )
+		{
+			for ( int i = 1; i < tokenNum; ++i )
+			{
+				if ( i == 1 )
+				{
+					_stprintf( optString, _T( "%s%s" ), optString, cmdTokenList[i] );
+				}
+				else
+				{
+					_stprintf( optString, _T( "%s %s" ), optString, cmdTokenList[i] );
+				}
+			}
+			RemoveDirectory( optString );
+		}
+	}
+	else if ( !_tcscmp( cmdTokenList[0], _T( "del" ) ) )
+	{
+		if ( tokenNum < 2 )
+		{
+			_tprintf( _T( "usage: del <file name> \n" ) );
+			return 0;
+		}
+		DeleteFile( cmdTokenList[1] );
+
+	}
+	else if ( !_tcscmp( cmdTokenList[0], _T( "del" ) ) )
+	{
+		if ( tokenNum < 2 )
+		{
+			_tprintf( _T( "usage: del <file name> \n" ) );
+			return 0;
+		}
+		DeleteFile( cmdTokenList[1] );
+
+	}
+	else if ( !_tcscmp( cmdTokenList[0], _T( "ren" ) ) )
+	{
+		if ( tokenNum < 3 )
+		{
+			_tprintf( _T( "usage: ren <file name> <file name> \n" ) );
+			return 0;
+		}
+		MoveFile( cmdTokenList[1], cmdTokenList[2] );
+
+	}
 	else
 	{
 		_tcscpy( cmdStringWithOptions, cmdTokenList[0] );
@@ -274,4 +347,30 @@ void ListProcessInfo( void )
 	} while ( Process32Next( hProcessSnap, &pe32 ) );
 
 	CloseHandle( hProcessSnap );
+}
+
+void ListDirectory( void )
+{
+	WIN32_FIND_DATA FindFileData;
+	HANDLE hFind = INVALID_HANDLE_VALUE;
+
+	TCHAR DirSpec[DIR_LEN];
+	GetCurrentDirectory( DIR_LEN, DirSpec );
+	_tcsncat( DirSpec, _T( "\\*" ), 3 );
+
+	hFind = FindFirstFile( DirSpec, &FindFileData );
+
+	if ( hFind == INVALID_HANDLE_VALUE )
+	{
+		_tprintf( _T( "Invalid file Handle \n" ) );
+	}
+	else
+	{
+		_tprintf( _T( "%s \n" ), FindFileData.cFileName );
+		while ( FindNextFile(hFind, &FindFileData) != 0 )
+		{
+			_tprintf( _T( "%s \n" ), FindFileData.cFileName );
+		}
+		FindClose( hFind );
+	}
 }
